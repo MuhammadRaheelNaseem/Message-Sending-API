@@ -1,101 +1,112 @@
 # Message Sending API
 
 ## Introduction
-These Python scripts demonstrate how to send SMS messages using the Vonage (formerly Nexmo) SMS API. They provide two different implementations for sending SMS messages, catering to both MicroPython and standard Python environments.
+In this repository, you'll find Python scripts showcasing different approaches to sending SMS messages using the Sinch SMS API. Sinch offers a robust platform for communication services, including SMS, voice, and video. These scripts provide practical examples of integrating SMS functionality into your Python applications, catering to various use cases and preferences.
 
 ## Prerequisites
-Before using these scripts, you need to sign up for a Vonage account and obtain your API key and API secret. Additionally, ensure that you have Python installed on your system. For MicroPython users, you need the `urequests` library, while for standard Python, the `requests` library is required.
+Before utilizing these scripts, ensure you have the following prerequisites:
+- **Sinch Account**: Sign up for a Sinch account and obtain your API credentials (API key and API secret).
+- **Python Environment**: Ensure Python is installed on your system.
+- **Dependencies**: Install necessary Python libraries using pip:
+  ```
+  pip install sinch
+  ```
 
-## Code 1: Using MicroPython Requests Library (urequests)
+## Code 1: Using Requests Library (urequests)
 ```python
 import requests as urequests
 
-def send_sms(api_key, api_secret, from_number, to_number, message):
-    # Define the Vonage API endpoint and headers
-    url = "https://rest.nexmo.com/sms/json"
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    
-    # Prepare data for the POST request
-    data = {
-        "api_key": api_key,
-        "api_secret": api_secret,
-        "from": from_number,
-        "to": to_number,
-        "text": message
+def send_sms(token, recipient, message):
+    url = "https://sms.api.sinch.com/xms/v1/your_batch_id/batches"
+    headers = {
+        "Authorization": token,
+        "Content-Type": "application/json"
     }
-    
-    # Send the POST request and print the response
-    response = urequests.post(url, headers=headers, data=data)
-    response_data = response.json()
-    print(response_data)
+    data = {
+        "from": "your_sender_id",
+        "to": [recipient],
+        "body": message
+    }
+    response = urequests.post(url, headers=headers, json=data)
+    print(response.text)
     response.close()
 
-# Replace these variables with your actual Vonage API key, API secret, and phone numbers
-API_KEY = "your_api_key"
-API_SECRET = "your_api_secret"
-FROM_NUMBER = "your_vonage_number"
-TO_NUMBER = "recipient_number"
-MESSAGE = "Hello from IoT Device"
+# Replace token, recipient, and message with your values
+token = "Bearer your_api_token"
+recipient = "recipient_phone_number"
+message = "Your test message here"
 
-send_sms(API_KEY, API_SECRET, FROM_NUMBER, TO_NUMBER, MESSAGE)
+# Send SMS
+send_sms(token, recipient, message)
 ```
 **Explanation:**
-- This script utilizes the `urequests` library, suitable for MicroPython environments with limited resources.
-- The `send_sms` function constructs a POST request to the Vonage API endpoint with necessary parameters.
-- After sending the request, it prints the response received from the API.
+- This script demonstrates sending SMS messages using the `urequests` library, suitable for MicroPython environments or environments with limited resources.
+- It constructs a POST request to the Sinch API endpoint with necessary parameters, including API token, recipient number, and message.
+- The `send_sms` function sends the request and prints the response received from the API.
 
-## Code 2: Using Requests Library (Python)
+## Code 2: Using SinchClient Library
 ```python
-import requests
-import json
+from sinch import SinchClient
 
-def send_sms(api_key, api_secret, from_number, to_number, message):
-    # Define the Vonage API endpoint and headers
-    url = "https://rest.nexmo.com/sms/json"
-    headers = {"Content-Type": "application/x-www-form-urlencoded"}
-    
-    # Prepare data for the POST request
-    data = {
-        "api_key": api_key,
-        "api_secret": api_secret,
-        "from": from_number,
-        "to": to_number,
-        "text": message
-    }
-    
-    try:
-        # Send the POST request
-        response = requests.post(url, headers=headers, data=data)
-        response_data = response.json()
-        print(response_data)
-        response.close()
-        
-        # Check if the message was sent successfully
-        if response_data.get("messages") and response_data["messages"][0].get("status") == "0":
-            print("Message sent successfully!")
-        else:
-            print("Failed to send message. Error:", response_data.get("messages")[0]["error-text"])
-    except Exception as e:
-        print("Error:", e)
+sinch_client = SinchClient(
+    key_id="your_key_id",
+    key_secret="your_key_secret",
+    project_id="your_project_id"
+)
 
-# Replace these variables with your actual Vonage API key, API secret, and phone numbers
-API_KEY = "your_api_key"
-API_SECRET = "your_api_secret"
-FROM_NUMBER = "your_vonage_number"
-TO_NUMBER = "recipient_number"
-MESSAGE = "Hello from From IoT Device"
+send_batch_response = sinch_client.sms.batches.send(
+    body="Hello from Sinch!",
+    to=["recipient_phone_number"],
+    from_="sender_phone_number",
+    delivery_report="none"
+)
 
-send_sms(API_KEY, API_SECRET, FROM_NUMBER, TO_NUMBER, MESSAGE)
+print(send_batch_response)
 ```
 **Explanation:**
-- This script employs the `requests` library, suitable for standard Python environments.
-- Similar to the MicroPython script, `send_sms` function constructs a POST request to the Vonage API endpoint.
-- Additionally, it includes error handling to manage exceptions and checks the response for successful message delivery.
+- This script utilizes the Sinch Python SDK (`sinch` library) to interact with the Sinch API in a more structured way.
+- It initializes a Sinch client with your API credentials and project ID.
+- Then it sends an SMS batch with specified parameters, including the message body, recipient number, and sender number.
+
+## Code 3: Using Requests Library (with Base64 Encoding)
+```python
+import requests as urequests
+import base64
+
+def send_sms(app_key, app_secret, recipient, message):
+    url = "https://sms.api.sinch.com/xms/v1/your_batch_id/batches"
+    auth_str = "{}:{}".format(app_key, app_secret)
+    headers = {
+        "Authorization": "Bearer your_api_token",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "from": "sender_phone_number",
+        "to": [recipient],
+        "body": message
+    }
+    response = urequests.post(url, headers=headers, json=data)
+    print(response.text)
+    response.close()
+
+# Replace app_key, app_secret, recipient, and message with your values
+APP_KEY = "your_app_key"
+APP_SECRET = "your_app_secret"
+recipient = "recipient_phone_number"
+message = "Your test message here"
+
+# Send SMS
+send_sms(APP_KEY, APP_SECRET, recipient, message)
+```
+**Explanation:**
+- This script also uses the `urequests` library for making HTTP requests.
+- It constructs a POST request to the Sinch API endpoint with necessary parameters, including app key, app secret, recipient number, and message.
+- Basic authentication is encoded in Base64 format before sending the request to the API.
 
 ## Usage
 To use these scripts:
-1. Replace the placeholder variables with your actual Vonage API key, API secret, and phone numbers.
-2. Run the script using Python.
+1. Replace the placeholder variables with your actual Sinch API credentials, recipient number, and message.
+2. Run the desired script using Python.
 
 ## Conclusion
-These scripts provide simple examples of how to send SMS messages using the Vonage SMS API in Python, catering to both MicroPython and standard Python environments. They serve as a foundation for integrating SMS functionality into your projects, such as IoT applications or automated notification systems.
+These scripts provide comprehensive examples of integrating SMS functionality into your Python applications using the `Sinch SMS API`. Whether you're working in a resource-constrained environment, prefer a structured SDK approach, or need to handle authentication manually, there's a suitable method for your needs. Feel free to customize and extend these scripts to fit your specific requirements.
